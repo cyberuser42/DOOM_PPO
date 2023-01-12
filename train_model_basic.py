@@ -1,5 +1,6 @@
 from vizdoom import * 
 
+import os 
 import cv2
 import random
 import time 
@@ -9,10 +10,10 @@ from gym import Env
 from gym.spaces import Discrete, Box
 
 from stable_baselines3 import PPO
+from stable_baselines3.common import vec_env
+from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 
-import os 
-from stable_baselines3.common.callbacks import BaseCallback
 
 CHECKPOINT_DIR = 'train_basic/'
 LOG_DIR = 'log_basic/'
@@ -26,25 +27,26 @@ class VizDoomGym(Env):
         # Setup the game 
         self.game = DoomGame()
         self.game.load_config(config)
-        
+        self.game.set_window_visible(False)
+
         # Render frame logic
-        if render == False: 
-            self.game.set_window_visible(False)
-        else:
-            self.game.set_window_visible(True)
+       #if render == False: 
+        #    self.game.set_window_visible(False)
+        #else:
+        #    self.game.set_window_visible(True)
         
         # Start the game 
         self.game.init()
         
         # Create the action space and observation space
         self.observation_space = Box(low=0, high=255, shape=(100,160,1), dtype=np.uint8) 
-        self.action_space = Discrete(3)
+        self.action_space = Discrete(self.game.get_available_buttons_size())
+        self.possible_actions = np.eye(self.action_space.n).tolist()
     
     # This is how we take a step in the environment
     def step(self, action):
         # Specify action and take step 
-        actions = np.identity(3)
-        reward = self.game.make_action(actions[action], 4) 
+        reward = self.game.make_action(self.possible_actions[action], 4) 
         
         # Get all the other stuff we need to retun 
         if self.game.get_state(): 
@@ -56,10 +58,10 @@ class VizDoomGym(Env):
             state = np.zeros(self.observation_space.shape)
             info = 0 
         
-        info = {"info":info}
         done = self.game.is_episode_finished()
-        
-        return state, reward, done, info 
+        info = {"info":info}
+
+        return state, reward, done, info
     
     # Define how to render the game or environment 
     def render(): 
@@ -83,6 +85,19 @@ class VizDoomGym(Env):
         self.game.close()
 
 
+def create_env(scenario: str, **kwargs) -> VizDoomGym:
+    # Create a VizDoom instance.
+    game = vizdoom.DoomGame()
+    game.load_config(f'scenarios/{scenario}.cfg')
+    game.set_window_visible(False)
+    game.init()
+
+    # Wrap the game with the Gym adapter.
+    return VizDoomGym(game, **kwargs)
+
+def create_vec_env(n_envs: int = 1, **kwargs) -> vec_env.VecTransposeImage:
+    return vec_env.VecTransposeImage(vec_env.DummyVecEnv([lambda: create_env(**kwargs)] * n_envs))
+
 class TrainAndLoggingCallback(BaseCallback):
 
     def __init__(self, check_freq, save_path, verbose=1):
@@ -101,11 +116,31 @@ class TrainAndLoggingCallback(BaseCallback):
 
         return True
 
-callback = TrainAndLoggingCallback(check_freq=10000, save_path=CHECKPOINT_DIR)
+training_env, eval_env = create_vec_env(n_envs=8, scenario="basic"), create_vec_env(n_envs=1, scenario="basic")
 
 # Non rendered environment
-env = VizDoomGym()
+#env = VizDoomGym()
 
-model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, learning_rate=0.0001, n_steps=2048)
+def create_agent(env, **kwargs):
+    return PPO(policy="CnnPolicy",
+                   env=env,
+                   n_steps=4096,
+                   batch_size=32,
+                   learning_rate=1e-4,
+                   tensorboard_log='logs/tensorboard',
+                   verbose=1,
+                   seed=0,
+                   **kwargs)
 
-model.learn(total_timesteps=100000, callback=callback)
+
+model = create_agent(training_env)
+
+# Define an evaluation callback that will save the model when a new reward record is reached.
+evaluation_callback = EvalCallback(eval_env, n_eval_episodes=10, eval_freq=5000, log_path='logs/evaluations/basic', best_model_save_path='logs/models/basic')
+
+
+model.learn(total_timesteps=100000, callback=evaluation_callback)
+
+training_env.close()
+eval_env.close()
+
