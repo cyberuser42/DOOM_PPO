@@ -1,7 +1,6 @@
 from stable_baselines3 import PPO
 from TrainAndLoggingCallback import TrainAndLoggingCallback
 from DeathmatchEnv import DoomWithBots
-from HelperFunctions import *
 from stable_baselines3.common import vec_env
 from stable_baselines3.common.callbacks import EvalCallback
 

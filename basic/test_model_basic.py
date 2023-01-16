@@ -80,13 +80,13 @@ class VizDoomGym(Env):
 
 
 # Load trained model
-model = PPO.load('train_basic/model6.0k')
+model = PPO.load('basic/train_basic/basic70k.zip')
 
 # Create rendered environment
 env = VizDoomGym(render=True)
 
 # Run 20 episodes
-for episode in range(20): 
+for episode in range(100): 
     obs = env.reset()
     done = False
     total_reward = 0

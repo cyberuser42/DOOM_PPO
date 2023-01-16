@@ -4,7 +4,7 @@ import cv2
 import random
 import time 
 import numpy as np
-
+import gym
 from gym import Env 
 from gym.spaces import Discrete, Box
 
@@ -15,10 +15,11 @@ from env import VizDoomGym
 
 
 # Reload model from disc
-model = PPO.load('model2100000')
+model = PPO.load('deadly_corridor/model800000.zip')
 
 # Create rendered environment
-env = VizDoomGym(render=True, config='/Users/thorh/Desktop/DOOM_PPO/deadly_corridor/scenarios/deadly_corridor_s3.cfg')
+env = VizDoomGym(render=True, config='/Users/thorh/Desktop/DOOM_PPO/deadly_corridor/scenarios/deadly_corridor_s2.cfg')
+env = gym.wrappers.TransformReward(env, lambda r: r * 0.01)
 
 for episode in range(20): 
     obs = env.reset()

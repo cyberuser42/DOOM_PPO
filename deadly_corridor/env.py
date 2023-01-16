@@ -11,6 +11,7 @@ from gym.spaces import Discrete, Box
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from available_actions import get_available_actions
 
 class VizDoomGym(Env): 
     # Function that is called when we start the env
@@ -29,7 +30,10 @@ class VizDoomGym(Env):
         
         # Start the game 
         self.game.init()
-        
+
+        self.possible_actions = get_available_actions(np.array(self.game.get_available_buttons()))
+        self.action_space = Discrete(len(self.possible_actions))
+
         # Create the action space and observation space
         self.observation_space = Box(low=0, high=255, shape=(100,160,1), dtype=np.uint8) 
         self.action_space = Discrete(7)
@@ -43,10 +47,7 @@ class VizDoomGym(Env):
         
     # This is how we take a step in the environment
     def step(self, action):
-        # Specify action and take step 
-        actions = np.identity(7)
-        #movement_reward = self.game.get_game_variable(GameVariable.POSITION_X)
-        movement_reward = self.game.make_action(actions[action], 4) 
+        movement_reward = self.game.make_action(self.possible_actions[action], 2) 
         
         reward = 0 
         # Get all the other stuff we need to retun 
@@ -73,7 +74,7 @@ class VizDoomGym(Env):
             #x_coord_delta = x_coord - self.x_coord
             #self.x_coord = x_coord
 
-            reward = movement_reward + damage_taken_delta*10 + damagecount_delta*200  + ammo_delta*5 
+            reward = (movement_reward + damage_taken_delta*10 + damagecount_delta*200  + ammo_delta*5)
             info = ammo
         else: 
             state = np.zeros(self.observation_space.shape)

@@ -11,14 +11,14 @@ from gym.spaces import Discrete, Box
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 
-from gym_wrapper_deadly_corridor import VizDoomGym
+from DeathmatchEnv import DoomWithBots
 
 
 # Reload model from disc
-model = PPO.load('model2680000')
+model = PPO.load('deathmatch/best_model_dm.zip')
 
 # Create rendered environment
-env = VizDoomGym(render=True, config='./deadly_corridor/scenarios/deadly_corridor_s1.cfg')
+env = DoomWithBots(render=True, config='deathmatch/cig.cfg')
 
 for episode in range(20): 
     obs = env.reset()
