@@ -57,3 +57,4 @@ _vizdoom.ini
 deathmatch/_vizdoom.ini
 basic/train_basic/basic70k.zip
 GS_DS.png
+__pycache__/
